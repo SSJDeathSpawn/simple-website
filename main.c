@@ -31,6 +31,7 @@ void append_route(RouterNode **head, const char* url, route_func_ptr func_ptr);
 RouterNode* get_route(RouterNode *head, const char* url);
 
 int sockfd;
+int client_sockfd;
 
 int main(void) {
   signal(SIGINT, handle_sigint);
@@ -57,42 +58,44 @@ int main(void) {
   while(1) {
     struct sockaddr_in client_addr = {0};
     socklen_t client_addr_len = sizeof(client_addr);
-    int client_sockfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_addr_len);
+    client_sockfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_addr_len);
     handle_error(client_sockfd, "accept");
 
     char request_buf[1024] = {0};
     ssize_t request_size = read(client_sockfd, request_buf, sizeof(request_buf));
     handle_error(request_size, "read");
+    printf("%s\n", request_buf);
     
     char method[16] = {0};
     char url[1024]= {0};
     sscanf(request_buf, "%s %s", method, url);
 
-    if(strcmp(method, "GET") != 0) {  
+    if(strcmp(method, "GET") != 0 && strcmp(method, "POST") != 0) {  
       const char* response = NO_METHOD_TEMPLATE;
       write(client_sockfd, response, strlen(response));
       close(client_sockfd);
       continue;
     }
 
-    RouterNode* route = get_route(head, url);
-    
-    if (route==NULL) {
-      printf("404 Error Not Found!\n");
-      const char* response = NOT_FOUND_TEMPLATE;
-      write(client_sockfd, response, strlen(response));
-      close(client_sockfd);
-      continue;
-    }
-    
-    int size = strlen(route->url);
-    printf("%s\n", route->url);
-    if (strlen(url) == size) {
-      (*route->func_ptr)(client_sockfd, "");
-    } else {
-      char *rest = dupstr(url+size);
-      (*route->func_ptr)(client_sockfd, rest);
-      free(rest);
+    if (strcmp(method, "GET") == 0) {
+      RouterNode* route = get_route(head, url);
+      
+      if (route==NULL) {
+        printf("404 Error Not Found!\n");
+        const char* response = NOT_FOUND_TEMPLATE;
+        write(client_sockfd, response, strlen(response));
+        close(client_sockfd);
+        continue;
+      }
+      
+      int size = strlen(route->url);
+      if (strlen(url) == size) {
+        (*route->func_ptr)(client_sockfd, "");
+      } else {
+        char *rest = dupstr(url+size);
+        (*route->func_ptr)(client_sockfd, rest);
+        free(rest);
+      }
     }
     close(client_sockfd);
   }
@@ -104,6 +107,7 @@ int main(void) {
 void handle_sigint(int sig) {
   printf("\nExiting...\n");
   close(sockfd);
+  close(client_sockfd);
   exit(1);
 }
 

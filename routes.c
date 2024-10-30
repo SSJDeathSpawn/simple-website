@@ -3,8 +3,6 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
-#include <stdarg.h>
-#include <magic.h>
 
 #define INDEX_FILE "index.html"
 #define ANOTHER_FILE "another.html"
@@ -72,7 +70,7 @@ void route_static(int client_sockfd, char* rest) {
   char* filepath = (char *) malloc((3+strlen(rest))*sizeof(char));
   strcpy(filepath, "./");
   strcat(filepath, rest);
-  printf("Reqesting for %s", filepath);
+  printf("Reqesting for %s\n", filepath);
   FILE *file = fopen(filepath, "r");
   if (handle_file_error(client_sockfd, file)) return;
   
